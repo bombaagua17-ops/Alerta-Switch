@@ -42,10 +42,12 @@ def check(url):
 def send(text):
     token = os.environ["TELEGRAM_TOKEN"]
     chat = os.environ["TELEGRAM_CHAT_ID"]
-    requests.post(
+    r = requests.post(
         f"https://api.telegram.org/bot{token}/sendMessage",
         data={"chat_id": chat, "text": text},
         timeout=30,
+    )
+    print("Telegram:", r.status_code, r.text)
     )
 
 
@@ -58,6 +60,7 @@ def main():
         resumen.append(f"{name}: {status}")
         if status == "stock":
             send(f"🎮 ¡Posible stock en {name}!\n{url}")
+            print("\n".join(resumen))
     if os.environ.get("SUMMARY") == "true":
         send("Prueba del bot:\n" + "\n".join(resumen))
 
