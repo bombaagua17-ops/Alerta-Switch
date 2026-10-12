@@ -25,13 +25,18 @@ def check(url):
     except requests.RequestException:
         return "error"
     if r.status_code != 200:
-        return "bloqueada"
+        return "bloqueada (" + str(r.status_code) + ")"
     html = r.text.lower()
     if "validatecaptcha" in html or "robot check" in html:
-        return "bloqueada"
-    m = re.search(r"schema\.org/(instock|limitedavailability|preorder|outofstock|soldout|discontinued)", html)
+        return "bloqueada (captcha)"
+    m = re.search(
+        r"schema\.org/(instock|limitedavailability|preorder|outofstock|soldout|discontinued)",
+        html,
+    )
     if m:
-        return "stock" if m.group(1) in ("instock", "limitedavailability", "preorder") else "agotado"
+        if m.group(1) in ("instock", "limitedavailability", "preorder"):
+            return "stock"
+        return "agotado"
     if any(w in html for w in OUT_WORDS):
         return "agotado"
     if any(w in html for w in IN_WORDS):
@@ -40,15 +45,20 @@ def check(url):
 
 
 def send(text):
-    token = os.environ["TELEGRAM_TOKEN"]
-    chat = os.environ["TELEGRAM_CHAT_ID"]
-    r = requests.post(
-        f"https://api.telegram.org/bot{token}/sendMessage",
-        data={"chat_id": chat, "text": text},
-        timeout=30,
-    )
-    print("Telegram:", r.status_code, r.text)
-    )
+    token = os.environ.get("TELEGRAM_TOKEN", "").strip()
+    chat = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+    if not token or not chat:
+        print("Faltan los secrets TELEGRAM_TOKEN o TELEGRAM_CHAT_ID")
+        return
+    try:
+        r = requests.post(
+            "https://api.telegram.org/bot" + token + "/sendMessage",
+            data={"chat_id": chat, "text": text},
+            timeout=30,
+        )
+        print("Telegram:", r.status_code, r.text)
+    except requests.RequestException as e:
+        print("Error enviando a Telegram:", type(e)._name_)
 
 
 def main():
@@ -57,12 +67,13 @@ def main():
         if not url:
             continue
         status = check(url)
-        resumen.append(f"{name}: {status}")
+        resumen.append(name + ": " + status)
         if status == "stock":
-            send(f"🎮 ¡Posible stock en {name}!\n{url}")
-            print("\n".join(resumen))
+            send("🎮 ¡Posible stock en " + name + "!\n" + url)
+    print("\n".join(resumen))
     if os.environ.get("SUMMARY") == "true":
         send("Prueba del bot:\n" + "\n".join(resumen))
 
 
-main()
+if _name_ == "_main_":
+    main()
