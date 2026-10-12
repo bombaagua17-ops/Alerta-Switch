@@ -75,5 +75,4 @@ def main():
         send("Prueba del bot:\n" + "\n".join(resumen))
 
 
-if _name_ == "_main_":
-    main()
+main()
